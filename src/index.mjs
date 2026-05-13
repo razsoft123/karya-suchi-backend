@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import express from "express";
 import { connectDB, disconnectDB } from "./config/db.mjs";
+import { apiRoutes } from "./routes/api.routes.mjs";
 
 
 dotenv.config();
@@ -16,7 +17,16 @@ app.get("/ping", (req, res) => {
     })
 });
 
-app.get("/",)
+// API endpoint routes for version 1
+app.use("/api/v1", apiRoutes);
+
+// Send a 404 response for default route
+app.get("/", (req, res) => {
+    res.status(200).json({
+        status: "failed",
+        message: "route not defiend"
+    })
+});
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = process.env.PORT || "8000";
