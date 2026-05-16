@@ -17,3 +17,9 @@ async function registerController(req, res) {
 async function refreshController(req, res) {
 
 }
+
+export {
+    loginController,
+    registerController,
+    refreshController,
+}
