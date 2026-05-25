@@ -2,12 +2,13 @@ import dotenv from "dotenv";
 import express from "express";
 import { connectDB, disconnectDB } from "./config/db.mjs";
 import { apiRoutes } from "./routes/api.routes.mjs";
-
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 // Basic routes
 app.get("/ping", (req, res) => {

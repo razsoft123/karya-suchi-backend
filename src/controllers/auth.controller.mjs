@@ -1,6 +1,5 @@
-import express from "express";
+
 import jwt from "jsonwebtoken";
-import { expressjwt } from "express-jwt";
 import bcrypt from "bcrypt";
 import { validateEmail, validateName, validatePassword } from "../utils/validations.mjs";
 import User from "./../models/User.mjs";
@@ -12,12 +11,12 @@ async function loginController(req, res) {
 
         const correctEmail = validateEmail(email);
 
-        const user = await User.findOne({ email: email });
+        const user = await User.findOne({ email: correctEmail });
         if (!user) {
             return res.status(400).json({
                 status: "failed",
                 data: {},
-                messages: ["No, user found with this email"]
+                messages: ["Inviled email or password"]
             })
         }
 
@@ -27,16 +26,27 @@ async function loginController(req, res) {
             return res.status(401).json({
                 status: "failed",
                 data: {},
-                messages: ["Email id or password is incorrect"]
+                messages: ["Inviled email or password"]
             })
         }
 
         // Create a JWT token and refresh token and 
-        const token = await jwt.sign(JSON.stringify({ id: user._id }), process.env.JWT_SECRET);
-        const refreshToken = await jwt.sign(JSON.stringify({ id: user._id }), process.env.JWT_REFRESH_SECRET);
+        const token = await jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_TIMEOUT });
+        const refreshToken = await jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_TIMEOUT });
 
-        res.set('jwt-token', token);
-        res.set('refresh-token', refreshToken);
+        res.cookie("accessToken", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV == 'prod' ? true : false,
+            sameSite: 'strict',
+            maxAge: 15 * 60 * 1000
+        })
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV == 'prod' ? true : false,
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        })
 
         return res.status(200).json({
             status: "success",
@@ -60,11 +70,12 @@ async function loginController(req, res) {
 
 // TODO: controller to implement the logout of the user
 async function logoutController(req, res) {
-    const jwtToken = req.header('jwt-token');
     try {
-        const result = await jwt.verify(jwtToken, process.env.JWT_SECRET);
-        res.set('jwt-token', null)
-        res.set('refresh-token', null)
+        const refreshToken = req.cookie?.refreshToken;
+        const result = await jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+        res.clearCookie('accessToken');
+        res.clearCookie('refreshToken');
 
         if (!result) {
             return res.status(400).json({
@@ -73,6 +84,10 @@ async function logoutController(req, res) {
                 messages: ["Can't varify the token "]
             })
         }
+
+        const user = await User.findById(result.id);
+        user.refreshToken = null;
+        await user.save();
 
         return res.status(204).json({
             status: "success",
@@ -118,17 +133,26 @@ async function registerController(req, res) {
 
         })
 
-        await newUser.save();
-
         // Send the new JWT token and new refresh token in as the http header cookies
-        const token = await jwt.sign(JSON.stringify({ id: newUser._id }), process.env.JWT_SECRET);
-        const refreshToken = await jwt.sign(JSON.stringify({ id: newUser._id }), process.env.JWT_REFRESH_SECRET);
+        const token = await jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_TIMEOUT });
+        const refreshToken = await jwt.sign({ id: newUser._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_TIMEOUT });
 
         newUser.refreshToken = refreshToken;
         await newUser.save();
 
-        res.set('jwt-token', token);
-        res.set('refresh-token', refreshToken);
+        res.cookie("accessToken", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV == 'prod' ? true : false,
+            sameSite: 'strict',
+            maxAge: 15 * 60 * 1000
+        })
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV == 'prod' ? true : false,
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        })
 
         return res.status(201).json({
             status: "success",
@@ -151,40 +175,94 @@ async function registerController(req, res) {
 }
 
 // TODO: controller for generating new refresh token evry time the JWT expires
+
 async function refreshController(req, res) {
-    const token = req.header('jwt-token');
-    const refreshToken = req.header('refresh-token');
-
     try {
-        try {
-            const result = jwt.verify(token, process.env.JWT_SECRET);
-        } catch (TokenExpiredError) {
-            { name, messages } = TokenExpiredError;
-            if (name === 'TokenExpiredError') {
-                try {
-                    const resultRef = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-                } catch (TokenExpiredErrorRef) {
-                    res.set('jwt-token', null);
-                    res.set('refresh-toke', null);
+        const refreshToken = req.cookies?.refreshToken;
 
-                    return res.status(400).json({
-                        status: 'failed',
-                        data: {},
-                        messages: ["JWT and Referesh both token is expired", "Preceding to logout"];
-                    })
-                }
-            }
+        if (!refreshToken) {
+            return res.status(401).json({
+                status: "failed",
+                data: {},
+                messages: ["Refresh token missing"]
+            });
         }
+
+        let decoded;
+
+        try {
+            decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        } catch (err) {
+            return res.status(401).json({
+                status: "failed",
+                data: {},
+                messages: ["Invalid or expired refresh token"]
+            });
+        }
+
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+            return res.status(404).json({
+                status: "failed",
+                data: {},
+                messages: ["User not found"]
+            });
+        }
+
+        if (user.refreshToken !== refreshToken) {
+            return res.status(401).json({
+                status: "failed",
+                data: {},
+                messages: ["Refresh token mismatch"]
+            });
+        }
+
+        const newAccessToken = jwt.sign(
+            { id: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "15m" }
+        );
+
+        const newRefreshToken = jwt.sign(
+            { id: user._id },
+            process.env.JWT_REFRESH_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        user.refreshToken = newRefreshToken;
+        await user.save();
+
+        res.cookie("accessToken", newAccessToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
+            maxAge: 15 * 60 * 1000
+        });
+
+        res.cookie("refreshToken", newRefreshToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
+        return res.status(200).json({
+            status: "success",
+            data: {},
+            messages: ["Token refreshed successfully"]
+        });
+
     } catch (err) {
         console.log("ERROR: failed in refresh token ", err);
+
         return res.status(500).json({
             status: "failed",
-            messages: ["Internal server error"],
-            data: {}
-        })
+            data: {},
+            messages: ["Internal server error"]
+        });
     }
 }
-
 
 
 export {
