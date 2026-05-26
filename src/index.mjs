@@ -3,12 +3,14 @@ import express from "express";
 import { connectDB, disconnectDB } from "./config/db.mjs";
 import { apiRoutes } from "./routes/api.routes.mjs";
 import cookieParser from "cookie-parser";
+import morgan from "morgan";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+app.use(morgan('dev'))
 
 // Basic routes
 app.get("/ping", (req, res) => {

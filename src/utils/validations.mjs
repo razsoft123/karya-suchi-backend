@@ -4,7 +4,7 @@ function validateEmail(email) {
     if (!email)
         return false;
 
-    email = email.trim().toLowercase();
+    email = email.trim().toLowerCase();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email) ? email : false;
@@ -31,7 +31,7 @@ function validatePassword(pass) {
 function validateName(name) {
     if (!name) return false;
 
-    name = name.trim().toLowercase()
+    name = name.trim().toLowerCase()
     // Only allow alphabets and spaces
     const nameRegex = /^[a-zA-Z\s]+$/;
     return nameRegex.test(name) ? name : false;

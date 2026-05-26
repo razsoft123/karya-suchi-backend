@@ -34,6 +34,9 @@ async function loginController(req, res) {
         const token = await jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_TIMEOUT });
         const refreshToken = await jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_TIMEOUT });
 
+        user.refreshToken = refreshToken;
+        await user.save();
+
         res.cookie("accessToken", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV == 'prod' ? true : false,
@@ -71,7 +74,7 @@ async function loginController(req, res) {
 // TODO: controller to implement the logout of the user
 async function logoutController(req, res) {
     try {
-        const refreshToken = req.cookie?.refreshToken;
+        const refreshToken = req.cookies?.refreshToken;
         const result = await jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
         res.clearCookie('accessToken');
@@ -102,7 +105,6 @@ async function logoutController(req, res) {
             messages: ["Logout failed"]
         })
     }
-    const result = jwt.verify(jwtToken, process.env.JWT_SECRET);
 }
 
 // TODO: controller to register a user and send the JWT token as response
@@ -123,8 +125,15 @@ async function registerController(req, res) {
             })
         }
 
+        if (!validatedPassword) {
+            return res.status(400).json({
+                status: "failed",
+                messages: ["Password must be between 8 and 32 chars long", "Must contain a number, a uppercase and lowercase letter and a special character"]
+            })
+        }
+
         // If user don't exist then hash the password and store the user data.
-        const hashPass = await bcrypt.hash(validatedPassword, 12);
+        const hashPass = await bcrypt.hash(password, 12);
 
         const newUser = await User.create({
             name: correctName,

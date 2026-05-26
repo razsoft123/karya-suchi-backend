@@ -4,7 +4,7 @@ import { loginController, logoutController, registerController, refreshControlle
 const authRoutes = express.Router();
 
 authRoutes.post("/login", loginController);
-authRoutes.get("logout", logoutController);
+authRoutes.get("/logout", logoutController);
 authRoutes.post("/register", registerController);
 authRoutes.post("/refresh", refreshController);
 
