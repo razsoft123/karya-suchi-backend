@@ -1,6 +1,13 @@
 import mongoose from "mongoose";
 
 const workspaceMemberSchema = mongoose.Schema({
+
+    workspace: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Workspace",
+        required: true
+    },
+
     memeber: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
