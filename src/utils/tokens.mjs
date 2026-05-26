@@ -18,9 +18,7 @@ function generateRefreshToken(payload) {
 }
 
 // add system to new token in response object http only cookies
-function setNewTokens(payload, res) {
-    const jwtToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+function setNewTokens(res, jwtToken, refreshToken) {
 
     const baseCookieOptions = {
         httpOnly: true,
@@ -37,8 +35,6 @@ function setNewTokens(payload, res) {
         ...baseCookieOptions,
         maxAge: process.env.REFRESH_TOKEN_MAX_AGE
     })
-
-    return { jwtToken, refreshToken }
 }
 
 export {
