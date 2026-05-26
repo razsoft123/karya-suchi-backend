@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import User from "./User.mjs";
 
 const taskSchema = new mongoose.Schema({
     title: {
@@ -12,11 +11,18 @@ const taskSchema = new mongoose.Schema({
     },
 
     user: {
-        type: User,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
         required: true
+    },
+
+    workspace: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Workspace",
+        default: null
     }
 }, {
-    timestamp: true
+    timestamps: true
 })
 
 export default mongoose.Model("task", taskSchema);
