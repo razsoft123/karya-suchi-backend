@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { authUser } from "../middleware/auth.middleware";
+import { authUser } from "../middleware/auth.middleware.mjs";
+import { getAllWorkspaces, getWorkspace, createWorkspace, updateWorkspace, deleteWorkspace } from "../controllers/workspace.controller.mjs"
 
 const workspaceRoutes = Router();
 
