@@ -4,13 +4,15 @@ import { connectDB, disconnectDB } from "./config/db.mjs";
 import { apiRoutes } from "./routes/api.routes.mjs";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import cors from "cors"
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-app.use(morgan('dev'))
+app.use(cors(process.env.CROSS_ORIGIN));
+app.use(morgan('dev'));
 
 // Basic routes
 app.get("/ping", (req, res) => {
@@ -41,5 +43,10 @@ const server = app.listen(PORT, HOST, () => {
     console.log(`SERVER: started\n HOST: ${HOST}\n PORT: ${PORT} \n LINK: http://${HOST}:${PORT}`);
 });
 
-
 // Closing connection to database when server closes
+process.on('SIGINT', async () => {
+    console.log('\nClosing server...');
+    server.close();
+    await disconnectDB();
+    process.exit(0);
+});
