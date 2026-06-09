@@ -21,7 +21,14 @@ const userSchema = new mongoose.Schema({
     refreshToken: {
         type: String,
         default: null,
+    },
+
+    defaultWorkspace: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "workspace",
+        required: true,
     }
+
 }, {
     timestamp: true
 });

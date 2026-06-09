@@ -184,7 +184,6 @@ async function registerController(req, res) {
 }
 
 // TODO: controller for generating new refresh token evry time the JWT expires
-
 async function refreshController(req, res) {
     try {
         const refreshToken = req.cookies?.refreshToken;
