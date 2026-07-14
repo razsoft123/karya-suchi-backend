@@ -3,7 +3,7 @@
 name: Deply karaysuchi backend
 
 on:
-  workflow_disptach:
+  workflow_dispatch:
 
 permissions:
   contents: read
